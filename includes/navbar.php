@@ -16,6 +16,9 @@ $nombreUsuario = isset($_SESSION['usuario']) ? htmlspecialchars($_SESSION['usuar
           <a class="nav-link" href="index.php">Dashboard</a>
         </li>
         <li class="nav-item">
+          <a class="nav-link" href="ventas.php">Ventas</a>
+        </li>  
+        <li class="nav-item">
           <a class="nav-link" href="historial.php">Historial</a>
         </li>
         <li class="nav-item">

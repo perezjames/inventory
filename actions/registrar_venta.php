@@ -66,9 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt_venta->close();
 
-        // 6. Registrar en 'movimientos'
-        $comentario_mov = "Venta de $cantidad_venta unidades de $nombre_producto.";
-        registrarMovimiento($conn, $producto_id, 'salida', $cantidad_venta, $comentario_mov);
+        // 6. Registrar en 'movimientos' (Tipo 'venta')
+        $comentario_mov = "Venta registrada de $cantidad_venta unidades de $nombre_producto. Total: " . number_format($precio_total_venta, 2);
+        registrarMovimiento($conn, $producto_id, 'venta', $cantidad_venta, $comentario_mov);
         
         // 7. Confirmar transacción
         $conn->commit();

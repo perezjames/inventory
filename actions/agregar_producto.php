@@ -16,8 +16,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cantidad = filter_var($_POST['cantidad'], FILTER_VALIDATE_INT);
     $precio = filter_var($_POST['precio'], FILTER_VALIDATE_FLOAT);
 
-    if (empty($nombre) || empty($categoria) || $cantidad === false || $precio === false) {
-        $response['error'] = 'Datos inválidos. Por favor, complete todos los campos.';
+    if (empty($nombre) || empty($categoria) || $cantidad === false || $precio === false || $cantidad < 0 || $precio < 0) {
+        $response['error'] = 'Datos inválidos. Por favor, complete todos los campos con valores positivos.';
         echo json_encode($response);
         exit;
     }
@@ -35,8 +35,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $producto_id = $conn->insert_id;
         $stmt->close();
 
-        // Opcional: Registrar movimiento
-        // ...
+        // Registrar movimiento de agregado
+        $tipo_mov = ($cantidad > 0) ? 'entrada' : 'edicion';
+        $comentario_mov = "Producto agregado (ID: $producto_id). Cantidad inicial: $cantidad. Precio: $precio.";
+        registrarMovimiento($conn, $producto_id, $tipo_mov, $cantidad, $comentario_mov);
 
         $conn->commit();
 
