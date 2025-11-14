@@ -11,12 +11,24 @@ $data_ventas = [];
 $data_stock = [];
 $data_valor = [];
 
-// Ajustar fecha_fin para que incluya todo el día si las fechas están presentes
+// Validar formato de fechas para prevenir inyección SQL
+$use_date_filter = false;
 $fecha_fin_ajustada = '';
-$use_date_filter = !empty($fecha_inicio) && !empty($fecha_fin);
 
-if ($use_date_filter) {
-    $fecha_fin_ajustada = $fecha_fin . ' 23:59:59';
+if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+    // Validar que las fechas tengan el formato correcto (YYYY-MM-DD)
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_inicio) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_fin)) {
+        // Validar que sean fechas válidas
+        $fecha_inicio_obj = DateTime::createFromFormat('Y-m-d', $fecha_inicio);
+        $fecha_fin_obj = DateTime::createFromFormat('Y-m-d', $fecha_fin);
+        
+        if ($fecha_inicio_obj && $fecha_fin_obj && 
+            $fecha_inicio_obj->format('Y-m-d') === $fecha_inicio && 
+            $fecha_fin_obj->format('Y-m-d') === $fecha_fin) {
+            $use_date_filter = true;
+            $fecha_fin_ajustada = $fecha_fin . ' 23:59:59';
+        }
+    }
 }
 
 // 1. Consulta de Ventas (Modificada para aceptar filtros)
