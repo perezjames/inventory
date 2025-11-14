@@ -2,11 +2,8 @@
 // actions/eliminar_producto.php
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php'; // Requerido para registrarMovimiento
-
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
 
 $response = ['success' => false, 'mensaje' => 'Error desconocido.'];
 
@@ -56,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
         if ($stmt_delete->affected_rows > 0) {
             // 4. Registrar movimiento de eliminación
             $comentario_mov = "Producto '$nombre_producto' (ID: $id) eliminado. Stock al eliminar: $cantidad_eliminada.";
+            // CAMBIO: registrarMovimiento ahora usa el user_id de la sesión.
             registrarMovimiento($conn, $id, 'eliminacion', 0, $comentario_mov);
 
             $conn->commit();

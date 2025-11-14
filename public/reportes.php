@@ -1,10 +1,7 @@
 <?php
 // public/reportes.php
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php';
-
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
 
 // --- LÓGICA DE DATOS ---
 $fecha_inicio = $_GET['fecha_inicio'] ?? '';
@@ -179,7 +176,8 @@ require_once __DIR__ . '/../includes/navbar.php';
                 <?php foreach ($data_valor as $row): ?>
                   <tr>
                     <td><?= htmlspecialchars($row['categoria']) ?></td>
-                    <td>$<?= number_format($row['valor_total'], 2) ?></td>
+                    <!-- CAMBIO: Formato monetario estandarizado a 2 decimales -->
+                    <td>$<?= number_format($row['valor_total'], 2, ',', '.') ?></td>
                   </tr>
                 <?php endforeach; ?>
               <?php endif; ?>

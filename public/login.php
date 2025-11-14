@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config/conexion.php';
 session_start();
 
 // Si el usuario ya está logueado, redirigir al index
-if (isset($_SESSION['usuario'])) {
+if (isset($_SESSION['user_id'])) {
     header('Location: index.php');
     exit();
 }
@@ -19,8 +19,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (empty($usuario_input) || empty($clave_input)) {
         $error = "Por favor, ingrese usuario y contraseña.";
     } else {
-        // --- Lógica de login principal (solo para usuarios existentes en DB) ---
-        $stmt = $conn->prepare("SELECT clave FROM usuarios WHERE usuario = ?");
+        // --- Lógica de login principal (obtener ID, usuario y clave) ---
+        // CAMBIO: Se obtiene el ID (que asumimos es INT) junto con la clave
+        $stmt = $conn->prepare("SELECT id, usuario, clave FROM usuarios WHERE usuario = ?");
         $stmt->bind_param("s", $usuario_input);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -31,7 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             if (password_verify($clave_input, $clave_hash)) {
                 // Autenticación exitosa
-                $_SESSION['usuario'] = $usuario_input;
+                // CAMBIO: Almacenar ID y nombre
+                $_SESSION['user_id'] = $fila['id'];
+                $_SESSION['usuario'] = $fila['usuario'];
                 $stmt->close();
                 header('Location: index.php');
                 exit();

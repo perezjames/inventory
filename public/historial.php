@@ -1,16 +1,22 @@
 <?php
 // public/historial.php
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php';
-
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
 
 // Ejecutar la consulta de movimientos
+// CAMBIO: Se obtiene el nombre de usuario (u.usuario) usando el user_id
 $query = "
-    SELECT m.id, p.nombre AS producto, m.tipo, m.cantidad, m.fecha, m.usuario, m.comentario
+    SELECT 
+        m.id, 
+        p.nombre AS producto, 
+        m.tipo, 
+        m.cantidad, 
+        m.fecha, 
+        u.usuario AS nombre_usuario, 
+        m.comentario
     FROM movimientos m
     JOIN productos p ON m.producto_id = p.id
+    LEFT JOIN usuarios u ON m.usuario_id = u.id
     ORDER BY m.fecha DESC
 ";
 $movimientos = $conn->query($query);
@@ -47,15 +53,32 @@ require_once __DIR__ . '/../includes/navbar.php';
                 <td><?= $row['id'] ?></td>
                 <td><?= htmlspecialchars($row['producto']) ?></td>
                 <td>
-                    <?php if($row['tipo'] == 'entrada'): ?>
-                        <span class="badge bg-success">Entrada</span>
-                    <?php else: ?>
-                        <span class="badge bg-danger">Salida</span>
-                    <?php endif; ?>
+                    <?php 
+                    $tipo = $row['tipo'];
+                    $badge_class = 'bg-secondary'; // Default: Edición, Eliminación
+                    $texto = ucwords($tipo);
+
+                    if ($tipo === 'entrada') {
+                        $badge_class = 'bg-success';
+                        $texto = 'Entrada';
+                    } elseif ($tipo === 'salida') {
+                        $badge_class = 'bg-danger';
+                        $texto = 'Salida Manual';
+                    } elseif ($tipo === 'venta') {
+                        $badge_class = 'bg-danger';
+                        $texto = 'Venta';
+                    } elseif ($tipo === 'eliminacion') {
+                        $texto = 'Eliminación';
+                    } elseif ($tipo === 'edicion') {
+                        $texto = 'Edición';
+                    }
+                    ?>
+                    <span class="badge <?= $badge_class ?>"><?= $texto ?></span>
                 </td>
                 <td><?= $row['cantidad'] ?></td>
                 <td><?= $row['fecha'] ?></td>
-                <td><?= htmlspecialchars($row['usuario']) ?></td>
+                <!-- CAMBIO: Mostrar nombre de usuario (viene de la tabla usuarios) -->
+                <td><?= htmlspecialchars($row['nombre_usuario'] ?? 'Sistema') ?></td>
                 <td><?= htmlspecialchars($row['comentario']) ?></td>
             </tr>
             <?php endwhile; ?>

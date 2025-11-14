@@ -2,11 +2,8 @@
 // actions/editar_producto_guardar.php
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php';
-
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
 
 $response = ['success' => false, 'mensaje' => 'Error desconocido.'];
 
@@ -67,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $cantidad_mov = 0; // No es un movimiento de stock
         }
         
+        // CAMBIO: registrarMovimiento ahora usa el user_id de la sesión.
         registrarMovimiento($conn, $id, $tipo_mov, $cantidad_mov, $comentario_mov);
 
         $conn->commit();

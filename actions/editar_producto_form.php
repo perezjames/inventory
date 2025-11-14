@@ -2,10 +2,9 @@
 // actions/editar_producto_form.php
 // Este archivo devuelve SOLO HTML
 
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
+// Nota: verificarSesion() ya se llama en bootstrap.php
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
     $id = (int)$_POST['id'];
@@ -36,7 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
           </div>
           <div class="mb-3">
             <label class="form-label">Precio</label>
-            <input type="number" name="precio" class="form-control" value="<?= $producto['precio'] ?>" required min="0" step="0.01">
+            <!-- CAMBIO: Se ajusta el valor para que sea un float, asegurando que el navegador lo muestre correctamente con decimales -->
+            <input type="number" name="precio" class="form-control" value="<?= number_format($producto['precio'], 2, '.', '') ?>" required min="0" step="0.01">
           </div>
           <div class="d-flex justify-content-end">
             <button type="submit" class="btn btn-dark">Guardar Cambios</button>

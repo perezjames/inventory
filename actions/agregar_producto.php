@@ -2,11 +2,8 @@
 // actions/agregar_producto.php
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php';
-
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
 
 $response = ['success' => false, 'error' => 'Error desconocido.'];
 
@@ -38,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Registrar movimiento de agregado
         $tipo_mov = ($cantidad > 0) ? 'entrada' : 'edicion';
         $comentario_mov = "Producto agregado (ID: $producto_id). Cantidad inicial: $cantidad. Precio: $precio.";
+        // CAMBIO: registrarMovimiento ahora usa el user_id de la sesión.
         registrarMovimiento($conn, $producto_id, $tipo_mov, $cantidad, $comentario_mov);
 
         $conn->commit();

@@ -1,11 +1,7 @@
 <?php
 // public/index.php
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php';
-
-// Verificar sesión
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
 
 // Consultas resumidas
 $totales = [
@@ -56,7 +52,8 @@ require_once __DIR__ . '/../includes/navbar.php';
       <div class="card shadow-sm border-0 text-center">
         <div class="card-body">
           <h5>Valor total</h5>
-          <h2>$<?= number_format($totales['valor'], 0, ',', '.') ?></h2>
+          <!-- CAMBIO: Formato monetario estandarizado a 2 decimales -->
+          <h2>$<?= number_format($totales['valor'], 2, ',', '.') ?></h2>
         </div>
       </div>
     </div>
@@ -96,8 +93,9 @@ require_once __DIR__ . '/../includes/navbar.php';
             <td><?= htmlspecialchars($row['nombre']) ?></td>
             <td><?= htmlspecialchars($row['categoria']) ?></td>
             <td><?= $row['cantidad'] ?></td>
-            <td>$<?= number_format($row['precio'], 0, ',', '.') ?></td>
-            <td>$<?= number_format($valor, 0, ',', '.') ?></td>
+            <!-- CAMBIO: Formato monetario estandarizado a 2 decimales -->
+            <td>$<?= number_format($row['precio'], 2, ',', '.') ?></td>
+            <td>$<?= number_format($valor, 2, ',', '.') ?></td>
             <td><?= $estado ?></td>
             <td><?= $row['fecha_ingreso'] ?></td>
             <td>

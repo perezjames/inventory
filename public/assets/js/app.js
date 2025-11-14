@@ -14,7 +14,7 @@ $(function() {
         if (isNaN(number)) {
             return '$0,00';
         }
-        // Usamos Intl.NumberFormat para manejar la localización de forma nativa (es-CO = punto miles, coma decimal)
+        // CAMBIO: Se fuerza a 2 decimales para consistencia financiera.
         const formatter = new Intl.NumberFormat('es-CO', {
             style: 'currency',
             currency: 'COP', // Se usa COP solo para forzar el formato, pero se reemplaza el símbolo abajo
@@ -89,8 +89,9 @@ $(function() {
                             modal.hide();
                             formAgregar.reset();
 
-                            const precioFormateado = `$${Number(producto.precio).toLocaleString('es-CO', { minimumFractionDigits: 0 })}`;
-                            const valorTotalFormateado = `$${(producto.cantidad * producto.precio).toLocaleString('es-CO', { minimumFractionDigits: 0 })}`;
+                            // CAMBIO: Usar la función centralizada de formato (2 decimales)
+                            const precioFormateado = formatNumberToCurrency(producto.precio);
+                            const valorTotalFormateado = formatNumberToCurrency(producto.cantidad * producto.precio);
 
                             // Agregar fila al DataTable
                             tablaProductos.row.add([
@@ -156,8 +157,9 @@ $(function() {
                     const fila = tablaProductos.row($(`button[data-id="${data.id}"]`).closest('tr'));
 
                     if (fila.length) {
-                        const precioFormateado = `$${Number(data.precio).toLocaleString('es-CO', { minimumFractionDigits: 0 })}`;
-                        const valorTotalFormateado = `$${(data.precio * data.cantidad).toLocaleString('es-CO', { minimumFractionDigits: 0 })}`;
+                        // CAMBIO: Usar la función centralizada de formato (2 decimales)
+                        const precioFormateado = formatNumberToCurrency(data.precio);
+                        const valorTotalFormateado = formatNumberToCurrency(data.precio * data.cantidad);
 
                         fila.data([
                             data.id,
@@ -240,7 +242,8 @@ $(function() {
             const productoSeleccionado = selectedOption.value;
 
             const total = precio * cantidad;
-            totalDisplay.textContent = `$${total.toLocaleString('es-CO', { minimumFractionDigits: 0 })}`;
+            // CAMBIO: Usar la función centralizada de formato (2 decimales)
+            totalDisplay.textContent = formatNumberToCurrency(total);
 
             // Validación de stock y selección de producto
             if (!productoSeleccionado) {

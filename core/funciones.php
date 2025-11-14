@@ -29,16 +29,19 @@ function calcular_estado_producto($cantidad) {
 function registrarMovimiento($conn, $producto_id, $tipo, $cantidad, $comentario) {
     // La cantidad solo se registra si es una operación de stock (entrada/salida/venta).
     $cantidad_a_registrar = in_array($tipo, ['entrada', 'salida', 'venta']) ? $cantidad : 0;
-    $usuario = $_SESSION['usuario'] ?? 'sistema';
     
-    $stmt = $conn->prepare("INSERT INTO movimientos (producto_id, tipo, cantidad, fecha, usuario, comentario) VALUES (?, ?, ?, NOW(), ?, ?)");
+    // CAMBIO: Usar user_id de la sesión como identificador único
+    $user_id = $_SESSION['user_id'] ?? 0; // Usar ID 0 o 'sistema' si la sesión no está definida.
+    
+    $stmt = $conn->prepare("INSERT INTO movimientos (producto_id, tipo, cantidad, fecha, usuario_id, comentario) VALUES (?, ?, ?, NOW(), ?, ?)");
     
     if (!$stmt) {
         error_log("Error al preparar el movimiento: " . $conn->error);
         return false;
     }
     
-    $stmt->bind_param("isiss", $producto_id, $tipo, $cantidad_a_registrar, $usuario, $comentario);
+    // CAMBIO: Bind con 'i' para usuario_id (asumiendo que es INT en DB)
+    $stmt->bind_param("isiss", $producto_id, $tipo, $cantidad_a_registrar, $user_id, $comentario);
     $result = $stmt->execute();
     
     if (!$result) {

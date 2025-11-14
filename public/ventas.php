@@ -1,20 +1,19 @@
 <?php
 // public/ventas.php
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php';
-
-verificarSesion();
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
 
 // Cargar productos para el dropdown
 // Solo productos con stock
 $productos_q = $conn->query("SELECT id, nombre, precio, cantidad FROM productos WHERE cantidad > 0 ORDER BY nombre ASC");
 
 // Cargar ventas recientes
+// CAMBIO: Se obtiene el nombre de usuario (u.usuario) para mostrar quién vendió
 $ventas_q = $conn->query("
-    SELECT v.id, p.nombre, v.cantidad, v.precio_total, v.fecha 
+    SELECT v.id, p.nombre, v.cantidad, v.precio_total, v.fecha, u.usuario AS nombre_usuario
     FROM ventas v
     JOIN productos p ON v.producto_id = p.id
+    LEFT JOIN usuarios u ON v.usuario = u.id -- Asume que 'v.usuario' ahora guarda el user_id
     ORDER BY v.fecha DESC
     LIMIT 10
 ");
@@ -62,7 +61,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="mb-0">Total:</h5>
-                            <h4 class="mb-0 text-success" id="precioTotalVenta">$0</h4>
+                            <h4 class="mb-0 text-success" id="precioTotalVenta">$0,00</h4>
                         </div>
 
                         <button type="submit" class="btn btn-dark w-100">
@@ -89,6 +88,7 @@ require_once __DIR__ . '/../includes/navbar.php';
                                     <th>Cantidad</th>
                                     <th>Total</th>
                                     <th>Fecha</th>
+                                    <th>Vendedor</th> <!-- Nuevo campo -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -98,13 +98,15 @@ require_once __DIR__ . '/../includes/navbar.php';
                                             <td><?= $v['id'] ?></td>
                                             <td><?= htmlspecialchars($v['nombre']) ?></td>
                                             <td><?= $v['cantidad'] ?></td>
-                                            <td>$<?= number_format($v['precio_total'], 0) ?></td>
+                                            <!-- CAMBIO: Formato monetario estandarizado a 2 decimales -->
+                                            <td>$<?= number_format($v['precio_total'], 2, ',', '.') ?></td>
                                             <td><?= $v['fecha'] ?></td>
+                                            <td><?= htmlspecialchars($v['nombre_usuario'] ?? 'N/A') ?></td>
                                         </tr>
                                     <?php endwhile; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">No hay ventas recientes.</td>
+                                        <td colspan="6" class="text-center text-muted">No hay ventas recientes.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>

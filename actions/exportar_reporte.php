@@ -1,32 +1,10 @@
-// actions/exportar_reporte.php - NUEVO ARCHIVO
 <?php
 // actions/exportar_reporte.php
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../core/session.php';
-require_once __DIR__ . '/../config/conexion.php';
-require_once __DIR__ . '/../core/funciones.php';
-
-verificarSesion();
-
-// Se incluye la función auxiliar para obtener la condición SQL de filtrado
-function obtener_condicion_fecha($filtro, $campo_fecha) {
-    if (!$filtro || $filtro === 'todos') return "1"; 
-    
-    switch ($filtro) {
-        case 'dia':
-            return "DATE($campo_fecha) = CURDATE()";
-        case 'semana':
-            return "YEARWEEK($campo_fecha, 1) = YEARWEEK(CURDATE(), 1)";
-        case 'mes':
-            return "YEAR($campo_fecha) = YEAR(CURDATE()) AND MONTH($campo_fecha) = MONTH(CURDATE())";
-        case 'anio':
-            return "YEAR($campo_fecha) = YEAR(CURDATE())";
-        default:
-            return "1";
-    }
-}
-
+// CAMBIO: Usar archivo central de inicialización
+require_once __DIR__ . '/../core/bootstrap.php';
+// Nota: La función obtener_condicion_fecha() ya está disponible a través de bootstrap.php -> funciones.php
 
 $response = ['success' => false, 'mensaje' => 'Solicitud inválida.'];
 
@@ -42,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reporte_tipo'])) {
     switch ($reporte_tipo) {
         case 'ventas':
             $titulo = "Reporte de Ventas por Producto";
+            // USO DE FUNCIÓN CENTRALIZADA
             $condicion_ventas = obtener_condicion_fecha($filtro_periodo, 'v.fecha');
             
             $query = "SELECT p.nombre, SUM(v.cantidad) AS total_vendido, SUM(v.precio_total) AS total_valor
@@ -86,7 +65,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reporte_tipo'])) {
 
         // **Punto de Generación de PDF**
         // En este punto se usaría una librería (ej. FPDF) para construir el archivo PDF
-        // con $response['titulo'] y $response['data'].
         
         $response['success'] = true;
         $response['titulo'] = $titulo;
