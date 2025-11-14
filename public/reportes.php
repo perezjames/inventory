@@ -78,13 +78,11 @@ require_once __DIR__ . '/../includes/navbar.php';
 <div class="container-fluid p-4">
  <h2 class="mb-4">Reportes</h2>  
 
-    <!-- Formulario de Filtros -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-secondary text-white">
             <i class="bi bi-filter"></i> Filtros de Reporte
         </div>
         <div class="card-body">
-            <!-- Usamos GET para que las fechas se mantengan en la URL al recargar -->
             <form method="GET" action="reportes.php" class="row g-3 align-items-end">
                 <div class="col-md-4">
                     <label for="fecha_inicio" class="form-label">Fecha Inicio (Solo Ventas)</label>
@@ -98,7 +96,6 @@ require_once __DIR__ . '/../includes/navbar.php';
                     <button type="submit" class="btn btn-dark w-100">
                         <i class="bi bi-search"></i> Aplicar Filtros
                     </button>
-                    <!-- Este botón NO es type="submit", es manejado por JS -->
                     <button type="button" class="btn btn-danger w-100" id="btnExportarPDF">
                         <i class="bi bi-file-earmark-pdf"></i> Exportar PDF
                     </button>
@@ -121,7 +118,6 @@ require_once __DIR__ . '/../includes/navbar.php';
     
     <div class="tab-content mt-3" id="reportesTabContent">
 
-      <!-- Reporte de Ventas -->
       <div class="tab-pane fade show active" id="ventas" role="tabpanel">
           <table class="table table-striped table-bordered" id="tablaVentas">
             <thead class="table-dark">
@@ -142,7 +138,6 @@ require_once __DIR__ . '/../includes/navbar.php';
           </table>
       </div>
 
-      <!-- Reporte de Stock -->
       <div class="tab-pane fade" id="stock" role="tabpanel">
           <table class="table table-striped table-bordered" id="tablaStock">
             <thead class="table-dark">
@@ -163,7 +158,6 @@ require_once __DIR__ . '/../includes/navbar.php';
           </table>
       </div>
 
-      <!-- Reporte de Valor -->
       <div class="tab-pane fade" id="valor" role="tabpanel">
           <table class="table table-striped table-bordered" id="tablaValor">
             <thead class="table-dark">
@@ -176,7 +170,6 @@ require_once __DIR__ . '/../includes/navbar.php';
                 <?php foreach ($data_valor as $row): ?>
                   <tr>
                     <td><?= htmlspecialchars($row['categoria']) ?></td>
-                    <!-- CAMBIO: Formato monetario estandarizado a 2 decimales -->
                     <td>$<?= number_format($row['valor_total'], 2, ',', '.') ?></td>
                   </tr>
                 <?php endforeach; ?>
@@ -193,7 +186,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 require_once __DIR__ . '/../includes/scripts.php'; 
 ?>
 <script>
-// Inicialización de DataTables y Lógica de PDF (Ajustada para v1.5.3)
+// Inicialización de DataTables y Lógica de PDF (Ajustada para html2pdf.js)
 $(document).ready(function(){
     
     // 1. Inicializar DataTables
@@ -205,68 +198,126 @@ $(document).ready(function(){
         language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' }
     };
     
-    $('#tablaVentas').DataTable(dataTableConfig);
-    $('#tablaStock').DataTable(dataTableConfig);
-    $('#tablaValor').DataTable(dataTableConfig);
+    // Se usa 'let' porque estas variables se reasignarán después de la destrucción/recreación
+    let tablaVentas = $('#tablaVentas').DataTable(dataTableConfig);
+    let tablaStock = $('#tablaStock').DataTable(dataTableConfig);
+    let tablaValor = $('#tablaValor').DataTable(dataTableConfig);
+    
 
-    // 2. Handler para exportar PDF
+    // 2. Handler para exportar PDF (Usando html2pdf.js)
     $('#btnExportarPDF').on('click', function() {
+        
+        const activeTabButton = $('#reportesTab .nav-link.active');
+        const tableId = activeTabButton.attr('data-bs-target'); // #ventas, #stock, #valor
+        const reportTitle = activeTabButton.text().trim(); 
+        const originalTableSelector = tableId === '#ventas' ? '#tablaVentas' : (tableId === '#stock' ? '#tablaStock' : '#tablaValor');
+
+        let dataTableInstance;
+        
+        // Determinar la instancia de DataTables
+        if (tableId === '#ventas') {
+            dataTableInstance = tablaVentas;
+        } else if (tableId === '#stock') {
+            dataTableInstance = tablaStock;
+        } else if (tableId === '#valor') {
+            dataTableInstance = tablaValor;
+        } else {
+             alert("Error: No se encontró la tabla de reporte activa.");
+             return;
+        }
+
+        // **Ajuste CRÍTICO: Destruir, Clonar (para exportación), y Recrear**
+        
+        // 1. Destruir la instancia actual para exponer todo el HTML (todas las filas)
+        dataTableInstance.destroy();
+        
+        // 2. Clonar la tabla HTML (que ahora es simple HTML con todas las filas)
+        const $table = $(originalTableSelector).clone();
+        
+        // 3. Re-inicializar DataTables inmediatamente en el elemento original
+        const newInstance = $(originalTableSelector).DataTable(dataTableConfig); 
+
+        // 4. Actualizar la variable de instancia global (SOLUCIÓN AL ERROR)
+        if (tableId === '#ventas') {
+            tablaVentas = newInstance;
+        } else if (tableId === '#stock') {
+            tablaStock = newInstance;
+        } else if (tableId === '#valor') {
+            tablaValor = newInstance;
+        }
+        
+        const tableToExport = $table[0]; 
+
+        // --- Construir el contenido a exportar ---
+        
+        // Usamos estilos inline básicos para que html2pdf.js los reconozca.
+        let htmlContent = `
+            <div style="padding: 20px; font-family: Arial, sans-serif;">
+                <h1 style="color: #212529; font-size: 24px; margin-bottom: 5px;">Reporte de Inventario</h1>
+        `;
+
+        // Subtítulo con fechas (solo para Ventas)
+        const fechaInicio = $('#fecha_inicio').val();
+        const fechaFin = $('#fecha_fin').val();
+        let subTitle = `Reporte de: ${reportTitle}`;
+        if (reportTitle === 'Ventas' && fechaInicio && fechaFin) {
+            subTitle += ` (Desde ${fechaInicio} hasta ${fechaFin})`;
+        }
+        
+        htmlContent += `
+                <p style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">${subTitle}</p>
+        `;
+        
+        // Agregar la tabla al contenido.
+        htmlContent += tableToExport.outerHTML;
+
+        htmlContent += `</div>`;
+
+
+        // 4. Configuración y llamada a html2pdf
+        
+        // Crear un elemento temporal y añadirle el contenido HTML
+        const element = document.createElement('div');
+        element.innerHTML = htmlContent;
+
+        const fechaHoy = new Date().toISOString().slice(0, 10);
+        const filename = `reporte_${reportTitle.toLowerCase().replace(' ', '_')}_${fechaHoy}.pdf`;
+
+        // **Ajustes de Configuración para html2pdf**
+        const opt = {
+          margin: 10,
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { 
+              scale: 2, // Aumentar la escala para mejor calidad de imagen
+              logging: false, 
+              // Ignorar selectores de DataTables para asegurar que no se exporten elementos de navegación.
+              ignoreElements: (element) => {
+                  return element.classList.contains('dataTables_length') || 
+                         element.classList.contains('dataTables_filter') || 
+                         element.classList.contains('dataTables_info') || 
+                         element.classList.contains('dataTables_paginate');
+              }
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
         try {
-            // 1. Verificar jsPDF (v1.5.3 se carga como window.jsPDF)
-            if (typeof window.jsPDF === 'undefined') {
-                alert("Error: La librería jsPDF (núcleo) no se cargó correctamente.");
-                console.error("window.jsPDF no está definido.");
-                return;
-            }
-
-            // 2. Instanciar jsPDF (v1.5.3)
-            const doc = new window.jsPDF(); 
+            // Usar la función global html2pdf que se carga desde el CDN
+            html2pdf().set(opt).from(element).save();
             
-            // 3. Verificar autoTable (v1.5.3 se adhiere a la instancia doc)
-            if (typeof doc.autoTable === 'undefined') {
-                 alert("Error: La librería jspdf-autotable no se cargó correctamente.");
-                 console.error("doc.autoTable no está definido.");
-                 return;
-            }
-            
-            // Título del documento
-            doc.setFontSize(18);
-            doc.text("Reporte de Inventario", 14, 22);
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-
-            // Determinar qué tabla está activa
-            const activeTabButton = $('#reportesTab .nav-link.active');
-            const tableId = activeTabButton.attr('data-bs-target');
-            const tableElement = $(tableId).find('table'); 
-            const reportTitle = activeTabButton.text().trim(); 
-
-            // Añadir subtítulo con fechas
-            const fechaInicio = $('#fecha_inicio').val();
-            const fechaFin = $('#fecha_fin').val();
-            let subTitle = `Reporte de: ${reportTitle}`;
-            if (reportTitle === 'Ventas' && fechaInicio && fechaFin) {
-                subTitle += ` (Desde ${fechaInicio} hasta ${fechaFin})`;
-            }
-            
-            doc.text(subTitle, 14, 30);
-
-            // 4. LLAMAR A doc.autoTable (Sintaxis para v1.5.3)
-            doc.autoTable({
-                html: tableElement[0],
-                startY: 35,
-                theme: 'grid',
-                headStyles: { fillColor: [41, 45, 50] }
-            });
-
-            // Guardar el PDF
-            const fechaHoy = new Date().toISOString().slice(0, 10);
-            doc.save(`reporte_${reportTitle.toLowerCase().replace(' ', '_')}_${fechaHoy}.pdf`);
-
         } catch (e) {
-            console.error("Error al generar el PDF:", e);
+            console.error("Error al generar el PDF con html2pdf:", e);
             alert("Error al generar el PDF. Verifique la consola.");
         }
+    });
+    
+    // Restaurar los botones de DataTables si el usuario cambia de pestaña
+    $('#reportesTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        // Redraw DataTables on tab switch to fix possible layout issues
+        tablaVentas.columns.adjust().responsive.recalc();
+        tablaStock.columns.adjust().responsive.recalc();
+        tablaValor.columns.adjust().responsive.recalc();
     });
 });
 </script>
