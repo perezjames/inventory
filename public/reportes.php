@@ -11,25 +11,30 @@ $data_ventas = [];
 $data_stock = [];
 $data_valor = [];
 
+// Ajustar fecha_fin para que incluya todo el día si las fechas están presentes
+$fecha_fin_ajustada = '';
+$use_date_filter = !empty($fecha_inicio) && !empty($fecha_fin);
+
+if ($use_date_filter) {
+    $fecha_fin_ajustada = $fecha_fin . ' 23:59:59';
+}
+
 // 1. Consulta de Ventas (Modificada para aceptar filtros)
-$params_ventas = [];
 $query_ventas = "SELECT p.nombre, SUM(v.cantidad) AS total_vendido 
                  FROM ventas v 
                  JOIN productos p ON v.producto_id = p.id";
+$params_ventas = [];
 
-// Aplicar filtro de fecha SOLO si ambas fechas están presentes
-if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+if ($use_date_filter) {
+    // El filtro de ventas usa la fecha de la venta (v.fecha)
     $query_ventas .= " WHERE v.fecha BETWEEN ? AND ?";
-    // Ajustar fecha_fin para que incluya todo el día
-    $fecha_fin_ajustada = $fecha_fin . ' 23:59:59';
     $params_ventas = [$fecha_inicio, $fecha_fin_ajustada];
 }
 
 $query_ventas .= " GROUP BY v.producto_id ORDER BY total_vendido DESC LIMIT 10";
 
 $stmt_ventas = $conn->prepare($query_ventas);
-if (!empty($params_ventas)) {
-    // 'ss' para dos strings (fecha_inicio, fecha_fin_ajustada)
+if ($use_date_filter) {
     $stmt_ventas->bind_param("ss", $params_ventas[0], $params_ventas[1]);
 }
 $stmt_ventas->execute();
@@ -44,31 +49,62 @@ $result_ventas->close();
 $stmt_ventas->close();
 
 
-// 2. Consulta de Stock (Sin cambios, es un snapshot actual)
+// 2. Consulta de Stock (Filtro por fecha de ingreso)
 $query_stock = "SELECT nombre, cantidad 
-                FROM productos
-                ORDER BY cantidad ASC
-                LIMIT 20";
-$result_stock = $conn->query($query_stock);
+                FROM productos";
+$params_stock = [];
+
+if ($use_date_filter) {
+    // CAMBIO: Se aplica el filtro a fecha_ingreso para limitar los productos considerados
+    $query_stock .= " WHERE fecha_ingreso BETWEEN ? AND ?";
+    $params_stock = [$fecha_inicio, $fecha_fin_ajustada];
+}
+
+$query_stock .= " ORDER BY cantidad ASC LIMIT 20";
+
+$stmt_stock = $conn->prepare($query_stock);
+if ($use_date_filter) {
+    $stmt_stock->bind_param("ss", $params_stock[0], $params_stock[1]);
+}
+$stmt_stock->execute();
+$result_stock = $stmt_stock->get_result();
+
 if ($result_stock && $result_stock->num_rows > 0) {
     while ($row = $result_stock->fetch_assoc()) {
         $data_stock[] = $row;
     }
-    $result_stock->close();
+}
+$result_stock->close();
+$stmt_stock->close();
+
+
+// 3. Consulta de Valor (Filtro por fecha de ingreso)
+$query_valor = "SELECT categoria, SUM(cantidad * precio) AS valor_total 
+                FROM productos";
+$params_valor = [];
+
+if ($use_date_filter) {
+    // CAMBIO: Se aplica el filtro a fecha_ingreso para limitar los productos considerados
+    $query_valor .= " WHERE fecha_ingreso BETWEEN ? AND ?";
+    $params_valor = [$fecha_inicio, $fecha_fin_ajustada];
 }
 
-// 3. Consulta de Valor (Sin cambios, es un snapshot actual)
-$query_valor = "SELECT categoria, SUM(cantidad * precio) AS valor_total 
-                FROM productos
-                GROUP BY categoria
-                ORDER BY valor_total DESC";
-$result_valor = $conn->query($query_valor);
+$query_valor .= " GROUP BY categoria ORDER BY valor_total DESC";
+
+$stmt_valor = $conn->prepare($query_valor);
+if ($use_date_filter) {
+    $stmt_valor->bind_param("ss", $params_valor[0], $params_valor[1]);
+}
+$stmt_valor->execute();
+$result_valor = $stmt_valor->get_result();
+
 if ($result_valor && $result_valor->num_rows > 0) {
     while ($row = $result_valor->fetch_assoc()) {
         $data_valor[] = $row;
     }
-    $result_valor->close();
 }
+$result_valor->close();
+$stmt_valor->close();
 
 // --- RENDERIZACIÓN DE VISTA ---
 require_once __DIR__ . '/../includes/header.php';
@@ -85,11 +121,11 @@ require_once __DIR__ . '/../includes/navbar.php';
         <div class="card-body">
             <form method="GET" action="reportes.php" class="row g-3 align-items-end">
                 <div class="col-md-4">
-                    <label for="fecha_inicio" class="form-label">Fecha Inicio (Solo Ventas)</label>
+                    <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
                     <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="<?= htmlspecialchars($fecha_inicio) ?>">
                 </div>
                 <div class="col-md-4">
-                    <label for="fecha_fin" class="form-label">Fecha Fin (Solo Ventas)</label>
+                    <label for="fecha_fin" class="form-label">Fecha Fin</label>
                     <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="<?= htmlspecialchars($fecha_fin) ?>">
                 </div>
                 <div class="col-md-4 d-flex gap-2">
@@ -145,7 +181,7 @@ require_once __DIR__ . '/../includes/navbar.php';
             </thead>
             <tbody>
               <?php if (empty($data_stock)): ?>
-                <tr><td colspan="2" class="text-center">No hay productos en stock.</td></tr>
+                <tr><td colspan="2" class="text-center">No hay productos en stock (Verifique el rango de fechas de ingreso).</td></tr>
               <?php else: ?>
                 <?php foreach ($data_stock as $row): ?>
                   <tr>
@@ -165,7 +201,7 @@ require_once __DIR__ . '/../includes/navbar.php';
             </thead>
             <tbody>
               <?php if (empty($data_valor)): ?>
-                <tr><td colspan="2" class="text-center">No hay datos de valor de inventario.</td></tr>
+                <tr><td colspan="2" class="text-center">No hay datos de valor de inventario (Verifique el rango de fechas de ingreso).</td></tr>
               <?php else: ?>
                 <?php foreach ($data_valor as $row): ?>
                   <tr>
@@ -256,12 +292,16 @@ $(document).ready(function(){
                 <h1 style="color: #212529; font-size: 24px; margin-bottom: 5px;">Reporte de Inventario</h1>
         `;
 
-        // Subtítulo con fechas (solo para Ventas)
+        // Subtítulo con fechas (APLICA A TODOS)
         const fechaInicio = $('#fecha_inicio').val();
         const fechaFin = $('#fecha_fin').val();
         let subTitle = `Reporte de: ${reportTitle}`;
-        if (reportTitle === 'Ventas' && fechaInicio && fechaFin) {
+        
+        // Si hay fechas, se añaden al subtítulo
+        if (fechaInicio && fechaFin) {
             subTitle += ` (Desde ${fechaInicio} hasta ${fechaFin})`;
+        } else {
+            subTitle += ` (Sin filtros de fecha)`;
         }
         
         htmlContent += `
