@@ -6,6 +6,29 @@ $(function() {
     // URL base para las acciones
     const actionsUrl = '../actions/'; // Ruta desde public/ a actions/
 
+    // --- FUNCIÓN DE UTILIDAD: FORMATEO DE MONEDA CONSISTENTE (2 decimales, punto miles, coma decimal) ---
+    function formatNumberToCurrency(number) {
+        if (typeof number === 'string') {
+            number = parseFloat(number);
+        }
+        if (isNaN(number)) {
+            return '$0,00';
+        }
+        // Usamos Intl.NumberFormat para manejar la localización de forma nativa (es-CO = punto miles, coma decimal)
+        const formatter = new Intl.NumberFormat('es-CO', {
+            style: 'currency',
+            currency: 'COP', // Se usa COP solo para forzar el formato, pero se reemplaza el símbolo abajo
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+
+        // El formato queda ej: $1.234,56
+        let formatted = formatter.format(number);
+
+        // Quitamos el símbolo de moneda que haya puesto Intl y forzamos el $ al inicio para consistencia.
+        return formatted.replace(/[COP$]/g, '').trim().replace(/^/, '$');
+    }
+
     // --- FUNCIÓN DE ALERTA GLOBAL ---
     function mostrarAlerta(mensaje, tipo = 'success', duracion = 4000) {
         const alerta = document.createElement("div");

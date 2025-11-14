@@ -10,18 +10,39 @@ if (isset($_SESSION['usuario'])) {
 }
 
 $error = null;
+$usuario_input = ''; // Inicializamos para evitar notices
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $usuario = $_POST['usuario'];
-    $clave = $_POST['clave'];
+    $usuario_input = trim($_POST['usuario'] ?? '');
+    $clave_input = $_POST['clave'] ?? '';
 
-    // usuario demo (Manteniendo tu lógica original)
-    if ($usuario === 'admin' && $clave === '12345') {
-        $_SESSION['usuario'] = $usuario;
-        header('Location: index.php');
-        exit();
+    if (empty($usuario_input) || empty($clave_input)) {
+        $error = "Por favor, ingrese usuario y contraseña.";
     } else {
-        $error = "Usuario o contraseña incorrectos";
+        // --- Lógica de login principal (solo para usuarios existentes en DB) ---
+        $stmt = $conn->prepare("SELECT clave FROM usuarios WHERE usuario = ?");
+        $stmt->bind_param("s", $usuario_input);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows === 1) {
+            $fila = $result->fetch_assoc();
+            $clave_hash = $fila['clave'];
+
+            if (password_verify($clave_input, $clave_hash)) {
+                // Autenticación exitosa
+                $_SESSION['usuario'] = $usuario_input;
+                $stmt->close();
+                header('Location: index.php');
+                exit();
+            } else {
+                $error = "Usuario o contraseña incorrectos";
+            }
+        } else {
+            // No se encontró el usuario, o la contraseña es incorrecta
+            $error = "Usuario o contraseña incorrectos";
+        }
+        $stmt->close();
     }
 }
 
@@ -35,12 +56,7 @@ require_once __DIR__ . '/../includes/header.php';
         <h4 class="bi bi-box-seam me-2"> Inventario</h4>
       </div>
       <div class="card-body p-4">
-        <!-- Alerta con datos de prueba -->
-        <div class="alert alert-info text-center" role="alert">
-          <i class="bi bi-info-circle"></i>
-          <strong>Datos de prueba:</strong> <br> Usuario: <em>admin</em> <br> Contraseña: <em>12345</em>
-        </div>
-
+        
         <?php if ($error): ?>
           <div class="alert alert-danger text-center"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
@@ -48,11 +64,11 @@ require_once __DIR__ . '/../includes/header.php';
         <form method="POST" action="login.php">
           <div class="mb-3">
             <label class="form-label">Usuario</label>
-            <input type="text" name="usuario" class="form-control" required>
+            <input type="text" name="usuario" class="form-control" required value="<?= htmlspecialchars($usuario_input) ?>" placeholder="admin">
           </div>
           <div class="mb-3">
             <label class="form-label">Contraseña</label>
-            <input type="password" name="clave" class="form-control" required>
+            <input type="password" name="clave" class="form-control" required placeholder="12345">
           </div>
           <button class="btn btn-dark w-100">Ingresar</button>
         </form>
