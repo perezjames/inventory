@@ -13,6 +13,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reporte_tipo'])) {
     $reporte_tipo = $_POST['reporte_tipo']; // ventas, stock, valor
     $filtro_periodo = $_POST['filtro_periodo'] ?? 'todos'; // dia, semana, mes, anio
     
+    // Validar reporte_tipo para prevenir inyección
+    $tipos_validos = ['ventas', 'stock', 'valor'];
+    if (!in_array($reporte_tipo, $tipos_validos, true)) {
+        $response['mensaje'] = 'Tipo de reporte no válido.';
+        echo json_encode($response);
+        exit;
+    }
+    
+    // Validar filtro_periodo para prevenir inyección
+    $periodos_validos = ['todos', 'dia', 'semana', 'mes', 'anio'];
+    if (!in_array($filtro_periodo, $periodos_validos, true)) {
+        $response['mensaje'] = 'Filtro de período no válido.';
+        echo json_encode($response);
+        exit;
+    }
+    
     $query = "";
     $titulo = "";
     $data = [];
