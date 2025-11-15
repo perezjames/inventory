@@ -1,24 +1,30 @@
 <?php
 // core/bootstrap.php
-
-/**
- * Archivo central de inicialización (Bootstrap)
- * Incluye archivos esenciales y verifica la autenticación.
- */
-
-// 1. Incluir el manejo de sesión (session_start() y verificarSesion())
 require_once __DIR__ . '/session.php';
 
-// 2. Incluir la conexión a la base de datos
-require_once __DIR__ . '/../config/conexion.php';
+// Cargar variables de entorno desde .env si existe
+$envFile = dirname(__DIR__) . '/.env';
+if (is_readable($envFile)) {
+    foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (str_starts_with(trim($line), '#')) continue;
+        [$k, $v] = array_map('trim', explode('=', $line, 2));
+        if ($k !== '') {
+            $_ENV[$k] = $v;
+            putenv("$k=$v");
+        }
+    }
+}
 
-// 3. Incluir las funciones de utilidad (calcular_estado_producto, registrarMovimiento, etc.)
+define('APP_VERSION', '1.0.0');
+
+// Seguridad de cabeceras (ajusta CSP según necesites)
+header('X-Frame-Options: SAMEORIGIN');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+header("Content-Security-Policy: default-src 'self' https:; script-src 'self' https: 'unsafe-inline'; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data:; font-src 'self' https: data:; connect-src 'self' https:;");
+
+require_once __DIR__ . '/../config/conexion.php';
 require_once __DIR__ . '/funciones.php';
 
-// 4. Verificar la sesión y redirigir al login si es necesario.
-// Esto se aplica a TODAS las páginas que requieran autenticación.
 verificarSesion();
-
-// Nota: La variable $conn (conexión DB) está disponible globalmente a través de la inclusión.
-
-?>

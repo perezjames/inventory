@@ -1,7 +1,6 @@
 <?php
-// includes/modals.php
+$csrf = generarCsrfToken();
 ?>
-
 <!-- MODAL AGREGAR PRODUCTO -->
 <div class="modal fade" id="modalAgregar" tabindex="-1" aria-labelledby="modalAgregarLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -12,19 +11,20 @@
       </div>
       <div class="modal-body">
         <form id="formAgregar">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
           <div class="mb-3">
             <label class="form-label">Nombre</label>
-            <input type="text" name="nombre" class="form-control" required>
+            <input type="text" name="nombre" class="form-control" required maxlength="100">
           </div>
           <div class="mb-3">
             <label class="form-label">Categoría</label>
-            <input type="text" name="categoria" class="form-control" required>
+            <input type="text" name="categoria" class="form-control" required maxlength="100">
           </div>
           <div class="mb-3">
             <label class="form-label">Cantidad</label>
-            <input type="number" name="cantidad" class="form-control" required min="0">
+            <input type="number" name="cantidad" class="form-control" required min="0" max="999999">
           </div>
-          <div class="mb-3">
+            <div class="mb-3">
             <label class="form-label">Precio</label>
             <input type="number" name="precio" class="form-control" required min="0" step="0.01">
           </div>
@@ -67,8 +67,9 @@
       </div>
       <div class="modal-body">
         <p>¿Estás seguro de que deseas eliminar este producto?</p>
-        <form id="formEliminar" method="POST" style="display:inline;">
+        <form id="formEliminar" method="POST">
           <input type="hidden" name="id" id="producto_id_eliminar">
+          <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
           <div class="d-flex justify-content-end">
           	<button type="submit" class="btn btn-danger">Eliminar</button>
             <button type="button" class="btn btn-secondary ms-2" data-bs-dismiss="modal">Cancelar</button>

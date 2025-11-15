@@ -1,44 +1,38 @@
-// public/assets/js/app.js
+    // public/assets/js/app.js
 
 // Esperar a que el DOM esté listo
-$(function() {
+$(function () {
 
     // URL base para las acciones
     const actionsUrl = '../actions/'; // Ruta desde public/ a actions/
 
     // --- FUNCIÓN DE UTILIDAD: FORMATEO DE MONEDA CONSISTENTE (2 decimales, punto miles, coma decimal) ---
     function formatNumberToCurrency(number) {
-        if (typeof number === 'string') {
-            number = parseFloat(number);
-        }
-        if (isNaN(number)) {
-            return '$0,00';
-        }
-        // CAMBIO: Se fuerza a 2 decimales para consistencia financiera.
+        if (typeof number === 'string') number = parseFloat(number);
+        if (isNaN(number)) return '$0,00';
+
         const formatter = new Intl.NumberFormat('es-CO', {
             style: 'currency',
-            currency: 'COP', // Se usa COP solo para forzar el formato, pero se reemplaza el símbolo abajo
+            currency: 'COP',
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
 
-        // El formato queda ej: $1.234,56
         let formatted = formatter.format(number);
-
-        // Quitamos el símbolo de moneda que haya puesto Intl y forzamos el $ al inicio para consistencia.
-        return formatted.replace(/[COP$]/g, '').trim().replace(/^/, '$');
+        // Reemplaza cualquier símbolo COP/$ al inicio por un único $
+        return '$' + formatted.replace(/[^0-9.,-]/g, '').trim();
     }
 
     // --- FUNCIÓN DE ALERTA GLOBAL ---
     function mostrarAlerta(mensaje, tipo = 'success', duracion = 4000) {
-        const alerta = document.createElement("div");
+        const alerta = document.createElement('div');
         alerta.className = `alert alert-${tipo} alert-dismissible fade show position-fixed top-0 end-0 m-3 shadow`;
-        alerta.role = "alert";
-        alerta.style.zIndex = "9999";
+        alerta.role = 'alert';
+        alerta.style.zIndex = '9999';
         alerta.innerHTML = `
           ${mensaje}
           <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      `;
+        `;
         document.body.appendChild(alerta);
 
         setTimeout(() => {
@@ -48,38 +42,35 @@ $(function() {
     }
 
     // Configuración global de idioma para DataTables
-    const dataTableLang = {
-        url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json'
-    };
+    const dataTableLang = { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' };
 
-    // --- INICIALIZACIÓN DE DATATABLES ---
+    // --- INICIALIZACIÓN DE DATATABLES EN PÁGINAS ESPECÍFICAS ---
 
-    // Solo inicializar la tabla si existe en la página actual
+    // index.php
     if ($('#tablaProductos').length > 0) {
         const tablaProductos = $('#tablaProductos').DataTable({
             language: dataTableLang,
             pageLength: 10,
             responsive: true,
-            // Definir columnas para el renderizado de datos
             columnDefs: [
-                { "targets": [0, 3, 7], "width": "1%" }, // ID, Cantidad, Ingreso
-                { "targets": [8], "orderable": false, "width": "10%" } // Acciones
+                { targets: [0, 3, 7], width: '1%' },
+                { targets: [8], orderable: false, width: '10%' }
             ],
         });
 
         // --- MANEJADORES DE EVENTOS PARA index.php ---
 
         // 1. AGREGAR PRODUCTO (Fetch API)
-        const formAgregar = document.getElementById("formAgregar");
+        const formAgregar = document.getElementById('formAgregar');
         if (formAgregar) {
-            formAgregar.addEventListener("submit", function(e) {
+            formAgregar.addEventListener('submit', function (e) {
                 e.preventDefault();
                 const formData = new FormData(this);
 
-                fetch(actionsUrl + "agregar_producto.php", {
-                        method: "POST",
-                        body: formData
-                    })
+                fetch(actionsUrl + 'agregar_producto.php', {
+                    method: 'POST',
+                    body: formData
+                })
                     .then(res => res.json())
                     .then(data => {
                         if (data.success) {
@@ -89,11 +80,9 @@ $(function() {
                             modal.hide();
                             formAgregar.reset();
 
-                            // CAMBIO: Usar la función centralizada de formato (2 decimales)
                             const precioFormateado = formatNumberToCurrency(producto.precio);
                             const valorTotalFormateado = formatNumberToCurrency(producto.cantidad * producto.precio);
 
-                            // Agregar fila al DataTable
                             tablaProductos.row.add([
                                 producto.id,
                                 producto.nombre,
@@ -104,19 +93,19 @@ $(function() {
                                 producto.estado,
                                 producto.fecha_ingreso,
                                 `<div class='d-grid gap-2 d-md-flex justify-content-md-center'>
-                              <button class='btn btn-outline-dark btn-sm' data-bs-toggle="modal" data-bs-target="#editarModal" data-id='${producto.id}'>Editar</button>
-                              <button class='btn btn-outline-danger btn-sm' data-bs-toggle="modal" data-bs-target="#eliminarModal" data-id='${producto.id}'>Eliminar</button>
-                          </div>`
-                            ]).draw(false); // 'false' para no resetear la paginación
+                                    <button class='btn btn-outline-dark btn-sm' data-bs-toggle="modal" data-bs-target="#editarModal" data-id='${producto.id}'>Editar</button>
+                                    <button class='btn btn-outline-danger btn-sm' data-bs-toggle="modal" data-bs-target="#eliminarModal" data-id='${producto.id}'>Eliminar</button>
+                                </div>`
+                            ]).draw(false);
 
                             mostrarAlerta('Producto agregado correctamente', 'success');
                         } else {
-                            mostrarAlerta("Error: " + data.error, 'danger');
+                            mostrarAlerta('Error: ' + (data.error || 'Solicitud inválida'), 'danger');
                         }
                     })
                     .catch(error => {
-                        console.error("Error al agregar:", error);
-                        mostrarAlerta("Error en la conexión o formato de respuesta.", 'danger');
+                        console.error('Error al agregar:', error);
+                        mostrarAlerta('Error en la conexión o formato de respuesta.', 'danger');
                     });
             });
         }
@@ -124,7 +113,7 @@ $(function() {
         // 2. EDITAR PRODUCTO (CARGAR MODAL)
         const modalEditar = document.getElementById('editarModal');
         if (modalEditar) {
-            modalEditar.addEventListener('show.bs.modal', function(e) {
+            modalEditar.addEventListener('show.bs.modal', function (e) {
                 const id = e.relatedTarget.dataset.id;
                 const contenidoModal = document.getElementById('contenidoEditar');
 
@@ -136,20 +125,20 @@ $(function() {
                               </div>`;
                 contenidoModal.innerHTML = spinner;
 
-                $.post(actionsUrl + 'editar_producto_form.php', { id: id }, function(data) {
+                $.post(actionsUrl + 'editar_producto_form.php', { id: id }, function (data) {
                     contenidoModal.innerHTML = data;
-                }).fail(function() {
+                }).fail(function () {
                     contenidoModal.innerHTML = '<div class="alert alert-danger">Error al cargar los datos del producto.</div>';
                 });
             });
         }
 
-        // 3. GUARDAR CAMBIOS (EDICIÓN) (Delegación de evento - Corregido para notificaciones)
-        $(document).on('submit', '#formEditar', function(e) {
+        // 3. GUARDAR CAMBIOS (EDICIÓN)
+        $(document).on('submit', '#formEditar', function (e) {
             e.preventDefault();
             const formData = $(this).serialize();
 
-            $.post(actionsUrl + 'editar_producto_guardar.php', formData, function(data) {
+            $.post(actionsUrl + 'editar_producto_guardar.php', formData, function (data) {
                 if (data.success) {
                     const modal = bootstrap.Modal.getInstance(document.getElementById('editarModal'));
                     modal.hide();
@@ -157,7 +146,6 @@ $(function() {
                     const fila = tablaProductos.row($(`button[data-id="${data.id}"]`).closest('tr'));
 
                     if (fila.length) {
-                        // CAMBIO: Usar la función centralizada de formato (2 decimales)
                         const precioFormateado = formatNumberToCurrency(data.precio);
                         const valorTotalFormateado = formatNumberToCurrency(data.precio * data.cantidad);
 
@@ -171,17 +159,17 @@ $(function() {
                             data.estado,
                             data.fecha_ingreso,
                             `<div class='d-grid gap-2 d-md-flex justify-content-md-center'>
-                                  <button class='btn btn-outline-dark btn-sm' data-bs-toggle="modal" data-bs-target="#editarModal" data-id='${data.id}'>Editar</button>
-                                  <button class='btn btn-outline-danger btn-sm' data-bs-toggle="modal" data-bs-target="#eliminarModal" data-id='${data.id}'>Eliminar</button>
-                              </div>`
+                                <button class='btn btn-outline-dark btn-sm' data-bs-toggle="modal" data-bs-target="#editarModal" data-id='${data.id}'>Editar</button>
+                                <button class='btn btn-outline-danger btn-sm' data-bs-toggle="modal" data-bs-target="#eliminarModal" data-id='${data.id}'>Eliminar</button>
+                             </div>`
                         ]).draw(false);
                     }
 
                     mostrarAlerta('Producto actualizado correctamente', 'success');
                 } else {
-                    mostrarAlerta('Error: ' + data.mensaje, 'danger');
+                    mostrarAlerta('Error: ' + (data.mensaje || 'No se pudo actualizar'), 'danger');
                 }
-            }, 'json').fail(function() {
+            }, 'json').fail(function () {
                 mostrarAlerta('Error de conexión o respuesta inesperada del servidor.', 'danger');
             });
         });
@@ -189,25 +177,24 @@ $(function() {
         // 4. ELIMINAR PRODUCTO (CARGAR MODAL)
         const modalEliminar = document.getElementById('eliminarModal');
         if (modalEliminar) {
-            modalEliminar.addEventListener('show.bs.modal', function(e) {
+            modalEliminar.addEventListener('show.bs.modal', function (e) {
                 const id = e.relatedTarget.dataset.id;
                 document.getElementById('producto_id_eliminar').value = id;
             });
         }
 
-        // 5. CONFIRMAR ELIMINACIÓN (Corregido para notificaciones)
+        // 5. CONFIRMAR ELIMINACIÓN
         const formEliminar = document.getElementById('formEliminar');
         if (formEliminar) {
-            formEliminar.addEventListener('submit', function(e) {
+            formEliminar.addEventListener('submit', function (e) {
                 e.preventDefault();
                 const id = document.getElementById('producto_id_eliminar').value;
 
-                $.post(actionsUrl + 'eliminar_producto.php', { id: id }, function(data) {
+                $.post(actionsUrl + 'eliminar_producto.php', { id: id }, function (data) {
                     if (data.success) {
                         const modal = bootstrap.Modal.getInstance(document.getElementById('eliminarModal'));
                         modal.hide();
 
-                        // Eliminar fila de DataTable
                         const fila = tablaProductos.row($(`button[data-id="${id}"]`).closest('tr'));
                         if (fila.length) {
                             fila.remove().draw(false);
@@ -215,37 +202,143 @@ $(function() {
 
                         mostrarAlerta('Producto eliminado correctamente', 'success');
                     } else {
-                        mostrarAlerta('No se pudo eliminar: ' + data.mensaje, 'danger');
+                        mostrarAlerta('No se pudo eliminar: ' + (data.mensaje || 'Error desconocido'), 'danger');
                     }
-                }, 'json').fail(function() {
+                }, 'json').fail(function () {
                     mostrarAlerta('Error de conexión o respuesta inesperada del servidor.', 'danger');
                 });
             });
         }
     }
 
-    // --- MANEJADORES DE EVENTOS PARA ventas.php ---
+    // historial.php
+    if ($('#tablaMovimientos').length > 0) {
+        $('#tablaMovimientos').DataTable({
+            language: dataTableLang,
+            pageLength: 10,
+            responsive: true,
+            order: [[4, 'desc']] // Fecha desc
+        });
+    }
 
-    const formVenta = document.getElementById("formRegistrarVenta");
+    // reportes.php
+    if ($('#reportesTab').length > 0) {
+        const dataTableConfig = {
+            paging: true,
+            ordering: true,
+            responsive: true,
+            searching: false,
+            language: dataTableLang
+        };
+
+        let tablaVentas = $('#tablaVentas').DataTable(dataTableConfig);
+        let tablaStock = $('#tablaStock').DataTable(dataTableConfig);
+        let tablaValor = $('#tablaValor').DataTable(dataTableConfig);
+
+        $('#btnExportarPDF').on('click', function () {
+            const activeTabButton = $('#reportesTab .nav-link.active');
+            const tableId = activeTabButton.attr('data-bs-target'); // #ventas, #stock, #valor
+            const reportTitle = activeTabButton.text().trim();
+            const originalTableSelector = tableId === '#ventas'
+                ? '#tablaVentas'
+                : (tableId === '#stock' ? '#tablaStock' : '#tablaValor');
+
+            let dataTableInstance;
+            if (tableId === '#ventas') dataTableInstance = tablaVentas;
+            else if (tableId === '#stock') dataTableInstance = tablaStock;
+            else if (tableId === '#valor') dataTableInstance = tablaValor;
+            else {
+                mostrarAlerta('No se encontró la tabla activa del reporte.', 'danger');
+                return;
+            }
+
+            // Destruir para exponer todo el HTML (todas las filas)
+            dataTableInstance.destroy();
+
+            // Clonar la tabla HTML expandida
+            const $table = $(originalTableSelector).clone();
+
+            // Re-inicializar DataTables inmediatamente
+            const newInstance = $(originalTableSelector).DataTable(dataTableConfig);
+            if (tableId === '#ventas') tablaVentas = newInstance;
+            else if (tableId === '#stock') tablaStock = newInstance;
+            else if (tableId === '#valor') tablaValor = newInstance;
+
+            const tableToExport = $table[0];
+
+            // Construcción HTML para el PDF
+            const fechaInicio = $('#fecha_inicio').val();
+            const fechaFin = $('#fecha_fin').val();
+            let subTitle = `Reporte de: ${reportTitle}`;
+            subTitle += (fechaInicio && fechaFin)
+                ? ` (Desde ${fechaInicio} hasta ${fechaFin})`
+                : ` (Sin filtros de fecha)`;
+
+            const htmlContent = `
+                <div style="padding: 20px; font-family: Arial, sans-serif;">
+                    <h1 style="color: #212529; font-size: 24px; margin-bottom: 5px;">Reporte de Inventario</h1>
+                    <p style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">${subTitle}</p>
+                    ${tableToExport.outerHTML}
+                </div>
+            `;
+
+            // Generar PDF
+            const element = document.createElement('div');
+            element.innerHTML = htmlContent;
+            const fechaHoy = new Date().toISOString().slice(0, 10);
+            const filename = `reporte_${reportTitle.toLowerCase().replace(/\s+/g, '_')}_${fechaHoy}.pdf`;
+
+            const opt = {
+                margin: 10,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: {
+                    scale: 2,
+                    logging: false,
+                    ignoreElements: (element) => {
+                        return element.classList?.contains('dataTables_length') ||
+                               element.classList?.contains('dataTables_filter') ||
+                               element.classList?.contains('dataTables_info') ||
+                               element.classList?.contains('dataTables_paginate');
+                    }
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            try {
+                html2pdf().set(opt).from(element).save();
+            } catch (e) {
+                console.error('Error al generar el PDF con html2pdf:', e);
+                mostrarAlerta('Error al generar el PDF. Revise la consola.', 'danger');
+            }
+        });
+
+        // Redibujo al cambiar de pestaña
+        $('#reportesTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+            tablaVentas.columns.adjust().responsive.recalc();
+            tablaStock.columns.adjust().responsive.recalc();
+            tablaValor.columns.adjust().responsive.recalc();
+        });
+    }
+
+    // --- MANEJADORES DE EVENTOS PARA ventas.php ---
+    const formVenta = document.getElementById('formRegistrarVenta');
     if (formVenta) {
         const selectProducto = document.getElementById('productoVenta');
         const inputCantidad = document.getElementById('cantidadVenta');
         const totalDisplay = document.getElementById('precioTotalVenta');
         const stockFeedback = document.getElementById('stockFeedback');
 
-        // Función para actualizar el total y validar stock
         function actualizarTotal() {
             const selectedOption = selectProducto.options[selectProducto.selectedIndex];
-            const precio = parseFloat(selectedOption.dataset.precio || 0);
+            const precio = parseFloat(selectedOption?.dataset?.precio || 0);
             const cantidad = parseInt(inputCantidad.value || 0);
-            const stockMax = parseInt(selectedOption.dataset.stock || 0);
-            const productoSeleccionado = selectedOption.value;
+            const stockMax = parseInt(selectedOption?.dataset?.stock || 0);
+            const productoSeleccionado = selectedOption?.value;
 
             const total = precio * cantidad;
-            // CAMBIO: Usar la función centralizada de formato (2 decimales)
             totalDisplay.textContent = formatNumberToCurrency(total);
 
-            // Validación de stock y selección de producto
             if (!productoSeleccionado) {
                 inputCantidad.classList.add('is-invalid');
                 stockFeedback.textContent = 'Por favor, seleccione un producto.';
@@ -261,26 +354,23 @@ $(function() {
             }
         }
 
-        selectProducto.addEventListener('change', function() {
+        selectProducto.addEventListener('change', function () {
             const stockMax = parseInt(this.options[this.selectedIndex].dataset.stock || 0);
             inputCantidad.max = stockMax;
 
-            // Si la cantidad actual excede el nuevo stock, ajustarla
             if (parseInt(inputCantidad.value) > stockMax) {
                 inputCantidad.value = stockMax;
-            } else if (inputCantidad.value === "" && stockMax > 0) {
-                inputCantidad.value = 1; // Establecer 1 por defecto al seleccionar
+            } else if (inputCantidad.value === '' && stockMax > 0) {
+                inputCantidad.value = 1;
             }
 
             actualizarTotal();
         });
 
         inputCantidad.addEventListener('input', actualizarTotal);
-        // Recargar al entrar a la página para inicializar
         actualizarTotal();
 
-        // Submisión del formulario de venta
-        formVenta.addEventListener("submit", function(e) {
+        formVenta.addEventListener('submit', function (e) {
             e.preventDefault();
 
             actualizarTotal();
@@ -291,24 +381,22 @@ $(function() {
 
             const formData = new FormData(this);
 
-            fetch(actionsUrl + "registrar_venta.php", {
-                    method: "POST",
-                    body: formData
-                })
+            fetch(actionsUrl + 'registrar_venta.php', {
+                method: 'POST',
+                body: formData
+            })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
                         mostrarAlerta(data.mensaje, 'success');
-                        // Recargar la página para actualizar la lista de productos disponibles y ventas recientes
                         setTimeout(() => window.location.reload(), 1000);
-
                     } else {
-                        mostrarAlerta("Error al registrar venta: " + data.mensaje, 'danger');
+                        mostrarAlerta('Error al registrar venta: ' + (data.mensaje || 'Error desconocido'), 'danger');
                     }
                 })
                 .catch(error => {
-                    console.error("Error al registrar venta:", error);
-                    mostrarAlerta("Error en la conexión o formato de respuesta.", 'danger');
+                    console.error('Error al registrar venta:', error);
+                    mostrarAlerta('Error en la conexión o formato de respuesta.', 'danger');
                 });
         });
     }

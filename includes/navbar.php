@@ -2,7 +2,9 @@
 // includes/navbar.php
 // Se asume que session_start() ya fue llamado por el archivo principal.
 // CAMBIO: user_id es el primario, pero 'usuario' sigue siendo el nombre a mostrar.
-$nombreUsuario = isset($_SESSION['usuario']) ? htmlspecialchars($_SESSION['usuario']) : 'Invitado';
+$nombreUsuario = isset($_SESSION['usuario'])
+    ? htmlspecialchars($_SESSION['usuario'], ENT_QUOTES, 'UTF-8')
+    : 'Invitado';
 ?>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
   <div class="container-fluid">

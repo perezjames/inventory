@@ -1,76 +1,52 @@
 <?php
 // actions/eliminar_producto.php
 header('Content-Type: application/json');
-
-// CAMBIO: Usar archivo central de inicialización
 require_once __DIR__ . '/../core/bootstrap.php';
 
 $response = ['success' => false, 'mensaje' => 'Error desconocido.'];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id'])) {
-    
-    // 1. Limpieza y validación estricta del ID
-    $id = filter_var($_POST['id'], FILTER_VALIDATE_INT);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!validarCsrfToken($_POST['csrf'] ?? null)) {
+        $response['mensaje'] = 'Token CSRF inválido.';
+        echo json_encode($response);
+        exit;
+    }
 
-    if ($id === false || $id <= 0) {
-        $response['mensaje'] = 'ID de producto inválido o no numérico.';
+    $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+    if (!$id || $id <= 0) {
+        $response['mensaje'] = 'ID inválido.';
         echo json_encode($response);
         exit;
     }
 
     $conn->begin_transaction();
-
     try {
         // 1. Obtener información del producto
         $stmt_info = $conn->prepare("SELECT nombre, cantidad FROM productos WHERE id = ?");
         $stmt_info->bind_param("i", $id);
         $stmt_info->execute();
-        $result_info = $stmt_info->get_result();
-        $producto_info = $result_info->fetch_assoc();
+        $info = $stmt_info->get_result()->fetch_assoc();
         $stmt_info->close();
-
-        if (!$producto_info) {
-             // Si el producto no se encuentra en la primera consulta, no puede ser eliminado.
-            throw new Exception("No se encontró el producto (ID: $id).");
-        }
-
-        $nombre_producto = htmlspecialchars($producto_info['nombre']);
-        $cantidad_eliminada = (int)$producto_info['cantidad'];
+        if (!$info) throw new Exception('Producto no encontrado.');
 
         // 2. Eliminar producto
         $stmt_delete = $conn->prepare("DELETE FROM productos WHERE id = ?");
         $stmt_delete->bind_param("i", $id);
-        
-        if (!$stmt_delete->execute()) {
-            // Manejar errores de clave foránea (FK)
-            if ($conn->errno == 1451) {
-                throw new Exception('No se puede eliminar: el producto tiene historial o ventas asociadas.');
-            }
-            throw new Exception("Error al ejecutar la eliminación: " . $stmt_delete->error);
-        }
-        
-        // 3. Verificar si se eliminó la fila (se comprueba después de execute)
-        if ($stmt_delete->affected_rows > 0) {
-            // 4. Registrar movimiento de eliminación
-            $comentario_mov = "Producto '$nombre_producto' (ID: $id) eliminado. Stock al eliminar: $cantidad_eliminada.";
-            // CAMBIO: registrarMovimiento ahora usa el user_id de la sesión.
-            registrarMovimiento($conn, $id, 'eliminacion', 0, $comentario_mov);
-
-            $conn->commit();
-            $response['success'] = true;
-            unset($response['mensaje']);
-        } else {
-            // Esto se ejecuta si $stmt_delete->affected_rows == 0
-            $conn->rollback();
-            $response['mensaje'] = 'No se encontró el producto o ya había sido eliminado (filas afectadas: 0).';
+        $stmt_delete->execute();
+        if ($stmt_delete->affected_rows < 1) {
+            throw new Exception('No se eliminó el producto.');
         }
         $stmt_delete->close();
 
+        // 3. Registrar movimiento de eliminación
+        registrarMovimiento($conn, $id, 'eliminacion', 0, "Producto '{$info['nombre']}' eliminado.");
+        $conn->commit();
+
+        $response = ['success' => true];
     } catch (Exception $e) {
         $conn->rollback();
         $response['mensaje'] = $e->getMessage();
     }
-
 } else {
     $response['mensaje'] = 'Solicitud inválida.';
 }

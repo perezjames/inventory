@@ -1,10 +1,8 @@
 <?php
 // public/historial.php
-// CAMBIO: Usar archivo central de inicialización
 require_once __DIR__ . '/../core/bootstrap.php';
 
-// Ejecutar la consulta de movimientos
-// CAMBIO: Se obtiene el nombre de usuario (u.usuario) usando el user_id
+// Consultar movimientos
 $query = "
     SELECT 
         m.id, 
@@ -28,7 +26,6 @@ require_once __DIR__ . '/../includes/navbar.php';
 <div class="container-fluid p-4">
  <h2 class="mb-4">Historial de movimientos</h2>
 
-<!-- TABLA DE MOVIMIENTOS -->
   <div class="card shadow-sm">
     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
       <span>Lista de movimientos</span>
@@ -47,42 +44,37 @@ require_once __DIR__ . '/../includes/navbar.php';
               <th>Comentario</th>
             </tr>
           </thead>
-          <tbody>  
-            <?php while($row = $movimientos->fetch_assoc()): ?>
-            <tr>
-                <td><?= $row['id'] ?></td>
-                <td><?= htmlspecialchars($row['producto']) ?></td>
-                <td>
-                    <?php 
-                    $tipo = $row['tipo'];
-                    $badge_class = 'bg-secondary'; // Default: Edición, Eliminación
-                    $texto = ucwords($tipo);
-
-                    if ($tipo === 'entrada') {
-                        $badge_class = 'bg-success';
-                        $texto = 'Entrada';
-                    } elseif ($tipo === 'salida') {
-                        $badge_class = 'bg-danger';
-                        $texto = 'Salida Manual';
-                    } elseif ($tipo === 'venta') {
-                        $badge_class = 'bg-danger';
-                        $texto = 'Venta';
-                    } elseif ($tipo === 'eliminacion') {
-                        $texto = 'Eliminación';
-                    } elseif ($tipo === 'edicion') {
-                        $texto = 'Edición';
-                    }
+          <tbody>
+            <?php if ($movimientos instanceof mysqli_result && $movimientos->num_rows > 0): ?>
+              <?php while ($row = $movimientos->fetch_assoc()): ?>
+                <tr>
+                  <td><?= (int)$row['id'] ?></td>
+                  <td><?= htmlspecialchars($row['producto'], ENT_QUOTES, 'UTF-8') ?></td>
+                  <td>
+                    <?php
+                      $tipo = (string)$row['tipo'];
+                      $map = [
+                        'entrada'     => ['badge' => 'bg-success',   'texto' => 'Entrada'],
+                        'salida'      => ['badge' => 'bg-danger',    'texto' => 'Salida Manual'],
+                        'venta'       => ['badge' => 'bg-danger',    'texto' => 'Venta'],
+                        'eliminacion' => ['badge' => 'bg-secondary', 'texto' => 'Eliminación'],
+                        'edicion'     => ['badge' => 'bg-secondary', 'texto' => 'Edición'],
+                      ];
+                      $badge_class = $map[$tipo]['badge'] ?? 'bg-secondary';
+                      $texto = $map[$tipo]['texto'] ?? ucwords($tipo);
                     ?>
                     <span class="badge <?= $badge_class ?>"><?= $texto ?></span>
-                </td>
-                <td><?= $row['cantidad'] ?></td>
-                <td><?= $row['fecha'] ?></td>
-                <!-- CAMBIO: Mostrar nombre de usuario (viene de la tabla usuarios) -->
-                <td><?= htmlspecialchars($row['nombre_usuario'] ?? 'Sistema') ?></td>
-                <td><?= htmlspecialchars($row['comentario']) ?></td>
-            </tr>
-            <?php endwhile; ?>
-            <?php $movimientos->close(); ?>
+                  </td>
+                  <td><?= (int)$row['cantidad'] ?></td>
+                  <td><?= htmlspecialchars($row['fecha'], ENT_QUOTES, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars($row['nombre_usuario'] ?? 'Sistema', ENT_QUOTES, 'UTF-8') ?></td>
+                  <td><?= htmlspecialchars($row['comentario'] ?? '', ENT_QUOTES, 'UTF-8') ?></td>
+                </tr>
+              <?php endwhile; ?>
+            <?php else: ?>
+              <tr><td colspan="7" class="text-center">No hay movimientos para mostrar.</td></tr>
+            <?php endif; ?>
+            <?php if ($movimientos instanceof mysqli_result) { $movimientos->free(); } ?>
           </tbody>
         </table>
       </div>
@@ -92,20 +84,6 @@ require_once __DIR__ . '/../includes/navbar.php';
 
 <?php 
 require_once __DIR__ . '/../includes/scripts.php'; 
-?>
-<script>
-    // Inicialización de DataTable específica para esta página
-    $(document).ready(function(){
-        $('#tablaMovimientos').DataTable({
-            language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json' },
-            pageLength: 10,
-            responsive: true,
-            order: [[ 4, 'desc' ]] // Ordenar por fecha descendente
-        });
-    });
-</script>
-
-<?php 
 require_once __DIR__ . '/../includes/footer.php'; 
 ?>
 </body>

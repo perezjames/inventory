@@ -1,51 +1,44 @@
 <?php
-// actions/agregar_producto.php
 header('Content-Type: application/json');
-
-// CAMBIO: Usar archivo central de inicialización
 require_once __DIR__ . '/../core/bootstrap.php';
 
 $response = ['success' => false, 'error' => 'Error desconocido.'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!validarCsrfToken($_POST['csrf'] ?? null)) {
+        $response['error'] = 'Token CSRF inválido.';
+        echo json_encode($response);
+        exit;
+    }
+
     $nombre = trim($_POST['nombre'] ?? '');
     $categoria = trim($_POST['categoria'] ?? '');
     $cantidad = filter_var($_POST['cantidad'], FILTER_VALIDATE_INT);
     $precio = filter_var($_POST['precio'], FILTER_VALIDATE_FLOAT);
 
-    if (empty($nombre) || empty($categoria) || $cantidad === false || $precio === false || $cantidad < 0 || $precio < 0) {
-        $response['error'] = 'Datos inválidos. Por favor, complete todos los campos con valores positivos.';
+    if ($nombre === '' || $categoria === '' || $cantidad === false || $precio === false || $cantidad < 0 || $precio < 0) {
+        $response['error'] = 'Datos inválidos.';
         echo json_encode($response);
         exit;
     }
 
     $conn->begin_transaction();
-
     try {
         $stmt = $conn->prepare("INSERT INTO productos (nombre, categoria, cantidad, precio, fecha_ingreso) VALUES (?, ?, ?, ?, NOW())");
-        $stmt->bind_param("ssdd", $nombre, $categoria, $cantidad, $precio); // Usar 'd' (double) para precio
-        
+        $stmt->bind_param("ssdd", $nombre, $categoria, $cantidad, $precio);
         if (!$stmt->execute()) {
-            throw new Exception("Error al guardar el producto: " . $stmt->error);
+            throw new Exception("Error al guardar producto.");
         }
-        
         $producto_id = $conn->insert_id;
         $stmt->close();
 
-        // Registrar movimiento de agregado
-        $tipo_mov = ($cantidad > 0) ? 'entrada' : 'edicion';
-        $comentario_mov = "Producto agregado (ID: $producto_id). Cantidad inicial: $cantidad. Precio: $precio.";
-        // CAMBIO: registrarMovimiento ahora usa el user_id de la sesión.
-        registrarMovimiento($conn, $producto_id, $tipo_mov, $cantidad, $comentario_mov);
-
+        registrarMovimiento($conn, $producto_id, $cantidad > 0 ? 'entrada' : 'edicion', $cantidad, "Producto agregado ID $producto_id");
         $conn->commit();
 
-        // Obtener el producto recién creado para devolverlo
-        $stmt_get = $conn->prepare("SELECT * FROM productos WHERE id = ?");
+        $stmt_get = $conn->prepare("SELECT id,nombre,categoria,cantidad,precio,fecha_ingreso FROM productos WHERE id = ?");
         $stmt_get->bind_param("i", $producto_id);
         $stmt_get->execute();
-        $result = $stmt_get->get_result();
-        $producto = $result->fetch_assoc();
+        $producto = $stmt_get->get_result()->fetch_assoc();
         $stmt_get->close();
 
         if ($producto) {
@@ -53,22 +46,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $producto['id'] = (int)$producto['id'];
             $producto['cantidad'] = (int)$producto['cantidad'];
             $producto['precio'] = (float)$producto['precio'];
-            
-            $response['success'] = true;
-            $response['producto'] = $producto;
-            unset($response['error']);
+            $response = ['success' => true, 'producto' => $producto];
         } else {
-            throw new Exception("No se pudo recuperar el producto insertado.");
+            throw new Exception("No se pudo recuperar el producto.");
         }
-
     } catch (Exception $e) {
         $conn->rollback();
         $response['error'] = $e->getMessage();
     }
-
 } else {
     $response['error'] = 'Método no permitido.';
 }
 
 echo json_encode($response);
-?>
